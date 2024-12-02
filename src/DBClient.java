@@ -36,34 +36,59 @@ public class DBClient extends JFrame {
                     return;
                 }
 
-                try {
-                    // Enviar la solicitud al servidor
-                    out.println(query);
+                // Crear un nuevo hilo para ejecutar la consulta en segundo plano
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            // Enviar la solicitud al servidor
+                            out.println(query);
 
-                    // Recibir la solicitud del servidor
-                    StringBuilder result = new StringBuilder();
-                    String line;
-                    while ((line = in.readLine()) != null && !line.isEmpty()) {
-                        result.append(line).append("\n");
-                    }
+                            // Recibir la respuesta del servidor
+                            StringBuilder result = new StringBuilder();
+                            String line;
+                            while ((line = in.readLine()) != null && !line.isEmpty()) {
+                                result.append(line).append("\n");                                
+                                if (result.toString().contains("Solicitud ejecutada exitosamente. Filas afectadas: ")) {                                    
+                                    JOptionPane.showMessageDialog(null, result.toString());
+                                }else {}
+                             
+                            }
 
-                    // Mostrar el resultado
-                    if (query.toUpperCase().startsWith("SELECT")) {
-                        displayResult(result.toString());
-                    } else {
-                        JOptionPane.showMessageDialog(null, result.toString());
+                            // Actualizar la interfaz gráfica de manera segura en el hilo principal
+                            SwingUtilities.invokeLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    // Mostrar el resultado en la interfaz gráfica
+                                    if (query.toUpperCase().startsWith("SELECT")) {
+                                        displayResult(result.toString());
+                                    } else {
+                                        // Mostrar confirmación del UPDATE, INSERT o DELETE
+                                        JOptionPane.showMessageDialog(null, result.toString());
+                                    }
+                                }
+                            });
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                            // Manejo de errores
+                            SwingUtilities.invokeLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    JOptionPane.showMessageDialog(null, "Error al comunicarse con el servidor: " + ex.getMessage());
+                                }
+                            });
+                        }
                     }
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(null, "Error al comunicarse con el servidor: " + ex.getMessage());
-                }
+                }).start();
             }
         });
+   
     }
+        
 
     private void connectToServer() {
         try {
-            socket = new Socket("localhost", 12345); // Conexion al servidor a modo socket a traves del puerto 12345
+            socket = new Socket("localhost", 8080); // Conexion al servidor a modo socket a traves del puerto 12345
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             System.out.println("Conectado al servidor.");
